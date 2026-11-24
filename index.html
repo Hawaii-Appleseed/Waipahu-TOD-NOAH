@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Map of older, unsubsidized apartment buildings around the Waipahu rail stations on Oahu.">
+<title>Waipahu TOD NOAH</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one-screen tool. Reading panel on the left, framed vector map on the right; stacks map-first on phones. */
+:root {
+  --bg: #f2f4f1; --panel: #fbfcfa; --fg: #18201c; --muted: #56625c; --line: #d3d9d4;
+  --accent: #0c6b5f; --accent-soft: rgba(12, 107, 95, 0.1); --accent-fg: #ffffff;
+  --water: #c6dbe0; --land: #e7eae4; --street: #ffffff; --street-casing: #c9d0ca; --street-label: #5c6862;
+  --district: rgba(12, 107, 95, 0.09); --district-line: #0c6b5f; --rail: #2b3135; --marker-ring: #ffffff;
+  --ring: #3d474e; --condo: #5d6a74;
+  --seq-1: #ebbdd3; --seq-2: #d27ea8; --seq-3: #a9467d; --seq-4: #6e1e50;
+  --cat-1: #2b6cb0; --cat-2: #d2741c; --cat-3: #2e8b57; --cat-4: #8b908d;
+  --shadow: 0 2px 10px rgba(24, 32, 28, 0.18);
+  --font-body: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111614; --panel: #171d1a; --fg: #e4eae6; --muted: #9ba7a1; --line: #2b3430;
+    --accent: #4fc3ae; --accent-soft: rgba(79, 195, 174, 0.13); --accent-fg: #0b1412;
+    --water: #0e1d23; --land: #1d2421; --street: #36413c; --street-casing: #131917; --street-label: #9aa59f;
+    --district: rgba(79, 195, 174, 0.1); --district-line: #4fc3ae; --rail: #d3d8d5; --marker-ring: #111614;
+    --ring: #c3cbc7; --condo: #a6b2bb;
+    --seq-1: #6b3357; --seq-2: #a3497f; --seq-3: #d679ab; --seq-4: #f6b9d7;
+    --cat-1: #6fa8ea; --cat-2: #f0a04b; --cat-3: #5cc28a; --cat-4: #98a19c;
+    --shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111614; --panel: #171d1a; --fg: #e4eae6; --muted: #9ba7a1; --line: #2b3430;
+  --accent: #4fc3ae; --accent-soft: rgba(79, 195, 174, 0.13); --accent-fg: #0b1412;
+  --water: #0e1d23; --land: #1d2421; --street: #36413c; --street-casing: #131917; --street-label: #9aa59f;
+  --district: rgba(79, 195, 174, 0.1); --district-line: #4fc3ae; --rail: #d3d8d5; --marker-ring: #111614;
+  --ring: #c3cbc7; --condo: #a6b2bb;
+  --seq-1: #6b3357; --seq-2: #a3497f; --seq-3: #d679ab; --seq-4: #f6b9d7;
+  --cat-1: #6fa8ea; --cat-2: #f0a04b; --cat-3: #5cc28a; --cat-4: #98a19c;
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0; box-sizing: border-box; background: var(--bg); color: var(--fg);
+  font: 14px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+.app { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 16px; height: 100%; }
+
+/* Panel */
+.panel { min-width: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 22px; padding-right: 4px; }
+.eyebrow { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+h1 { margin: 4px 0 8px; font-size: 22px; line-height: 1.2; font-weight: 700; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 60ch; }
+h2 { margin: 0 0 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stat { background: var(--panel); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.stat b { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat span { font-size: 12px; color: var(--muted); }
+.also { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button {
+  font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel); color: var(--fg);
+}
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+button:focus-visible, a:focus-visible, .item:focus-visible, .toggle input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.legend { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
+.legend li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.legend i, .toggle i { width: 12px; height: 12px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1.5px var(--marker-ring), 0 0 0 2.5px var(--line); }
+.toggle i { background: var(--condo); }
+.legend .n { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.legend-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+.key-lines { display: grid; gap: 6px; margin-top: 12px; font-size: 13px; }
+.key-lines > div, .toggle { display: flex; align-items: center; gap: 8px; }
+.key-lines svg { flex: none; }
+.toggle { cursor: pointer; }
+.toggle input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; flex: none; }
+
+.group h3 { margin: 14px 0 6px; font-size: 13px; font-weight: 600; display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
+.group h3 span { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.items { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.item {
+  width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-bottom: 1px solid var(--line);
+  padding: 7px 4px 7px 22px; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; position: relative;
+}
+.item::before { content: ""; position: absolute; left: 4px; top: 12px; width: 10px; height: 10px; border-radius: 50%; background: var(--dot); }
+.item:hover, .item.hot { background: var(--accent-soft); }
+.item[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.item .addr { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.item .meta { grid-column: 1; font-size: 12px; color: var(--muted); }
+.item .dist { grid-row: 1 / span 2; grid-column: 2; align-self: center; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.about { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+.about ul { margin: 6px 0 10px; padding-left: 18px; display: grid; gap: 4px; }
+.about p { margin: 6px 0; }
+.about a { color: var(--accent); }
+
+/* Map */
+.map-wrap { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+#map { position: absolute; inset: 0; background: var(--water); font-family: var(--font-body); }
+.map-msg { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+
+@media (max-width: 820px) {
+  html, body { height: auto; }
+  .app { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .map-wrap { order: -1; height: 62vh; min-height: 340px; }
+  .panel { overflow: visible; padding-right: 0; }
+}
+
+/* Leaflet essentials (inlined; the library's stylesheet cannot be loaded from a CDN here) */
+.leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-tile-container,
+.leaflet-pane > svg, .leaflet-pane > canvas, .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer { position: absolute; left: 0; top: 0; }
+.leaflet-container { overflow: hidden; -webkit-tap-highlight-color: transparent; }
+.leaflet-container .leaflet-overlay-pane svg { max-width: none !important; max-height: none !important; }
+.leaflet-container.leaflet-touch-zoom { touch-action: pan-x pan-y; }
+.leaflet-container.leaflet-touch-drag { touch-action: none; }
+.leaflet-pane { z-index: 400; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane { z-index: 500; }
+.leaflet-marker-pane { z-index: 600; }
+.leaflet-tooltip-pane { z-index: 650; }
+.leaflet-popup-pane { z-index: 700; }
+.leaflet-map-pane svg { z-index: 200; }
+.leaflet-zoom-box { width: 0; height: 0; z-index: 800; border: 2px dotted var(--accent); background: var(--accent-soft); }
+.leaflet-control { position: relative; z-index: 800; pointer-events: auto; float: left; clear: both; }
+.leaflet-top, .leaflet-bottom { position: absolute; z-index: 1000; pointer-events: none; }
+.leaflet-top { top: 0; } .leaflet-right { right: 0; } .leaflet-bottom { bottom: 0; } .leaflet-left { left: 0; }
+.leaflet-right .leaflet-control { float: right; margin-right: 10px; }
+.leaflet-top .leaflet-control { margin-top: 10px; }
+.leaflet-left .leaflet-control { margin-left: 10px; }
+.leaflet-bottom .leaflet-control { margin-bottom: 10px; }
+.leaflet-zoom-animated { transform-origin: 0 0; }
+.leaflet-zoom-anim .leaflet-zoom-animated { transition: transform 0.25s cubic-bezier(0, 0, 0.25, 1); }
+.leaflet-zoom-anim .leaflet-zoom-hide { visibility: hidden; }
+.leaflet-fade-anim .leaflet-popup { opacity: 0; transition: opacity 0.2s linear; }
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup { opacity: 1; }
+.leaflet-interactive { cursor: pointer; }
+.leaflet-grab { cursor: grab; }
+.leaflet-dragging .leaflet-grab, .leaflet-dragging .leaflet-grab .leaflet-interactive { cursor: grabbing; }
+.leaflet-popup-pane, .leaflet-control { cursor: auto; }
+.leaflet-marker-icon, .leaflet-image-layer, .leaflet-pane > svg path, .leaflet-tile-container { pointer-events: none; }
+.leaflet-pane > svg path.leaflet-interactive { pointer-events: auto; }
+.leaflet-bar { border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; }
+.leaflet-bar a {
+  display: block; width: 32px; height: 32px; line-height: 32px; text-align: center; text-decoration: none;
+  background: var(--panel); color: var(--fg); border-bottom: 1px solid var(--line); font: 600 18px/32px var(--font-body);
+}
+.leaflet-bar a:last-child { border-bottom: 0; }
+.leaflet-bar a.leaflet-disabled { color: var(--muted); opacity: 0.5; cursor: default; }
+.leaflet-popup { position: absolute; text-align: center; margin-bottom: 20px; }
+.leaflet-popup-content-wrapper { padding: 1px; text-align: left; border-radius: 10px; }
+.leaflet-popup-content { margin: 12px 30px 12px 14px; line-height: 1.45; font-size: 13px; min-height: 1px; }
+.leaflet-popup-tip-container { width: 40px; height: 20px; position: absolute; left: 50%; margin-top: -1px; margin-left: -20px; overflow: hidden; pointer-events: none; }
+.leaflet-popup-tip { width: 17px; height: 17px; padding: 1px; margin: -10px auto 0; pointer-events: auto; transform: rotate(45deg); }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel); color: var(--fg); box-shadow: var(--shadow); border: 1px solid var(--line); }
+.leaflet-container a.leaflet-popup-close-button {
+  position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; font: 18px/24px var(--font-body);
+  color: var(--muted); text-decoration: none; text-align: center; background: transparent; border: 0;
+}
+
+/* Map labels and popups */
+.lbl span {
+  position: absolute; transform: translate(-50%, -50%); white-space: nowrap; pointer-events: none;
+  text-shadow: 0 0 3px var(--land), 0 0 3px var(--land), 0 0 2px var(--land);
+}
+.street-label span { display: none; font-size: 11px; color: var(--street-label); letter-spacing: 0.02em; }
+.z15 .street-label.major span, .z16 .street-label span { display: block; }
+.ring-label span { transform: translate(-50%, -120%); font-size: 11px; font-weight: 700; color: var(--ring); }
+.station-label span {
+  transform: translate(-50%, 12px); font-weight: 700; font-size: 12px; color: var(--fg);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; text-shadow: none; box-shadow: var(--shadow);
+}
+.pop h4 { margin: 0 0 2px; font-size: 14px; }
+.pop .tmk { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.pop dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; margin: 8px 0; }
+.pop dt { color: var(--muted); }
+.pop dd { margin: 0; font-variant-numeric: tabular-nums; }
+.pop a { color: var(--accent); font-weight: 600; }
+.pop .flag { display: inline-block; margin-top: 4px; font-size: 12px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--fg); }
+@media (prefers-reduced-motion: reduce) { .leaflet-zoom-anim .leaflet-zoom-animated { transition: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel" aria-label="About this map">
+    <header>
+      <p class="eyebrow">Waipahu rail station areas · Oʻahu</p>
+      <h1>Potential naturally occurring affordable housing near Waipahu rail</h1>
+      <p class="lede">Older, privately owned apartment buildings with no public subsidy around the Hōʻaeʻae (West Loch) and Pouhala (Waipahu Transit Center) rail stations. TOD zoning allows denser redevelopment here, which can raise the chance these buildings are sold or replaced.</p>
+    </header>
+
+    <section aria-label="Summary">
+      <div class="stats">
+        <div class="stat"><b id="s-bldg">78</b><span>buildings</span></div>
+        <div class="stat"><b id="s-units">740</b><span>homes</span></div>
+        <div class="stat"><b id="s-near">25</b><span>within ¼ mile of a station</span></div>
+        <div class="stat"><b id="s-year">1965</b><span>median year built</span></div>
+      </div>
+      <p class="also" id="also"></p>
+    </section>
+
+    <section aria-labelledby="h-color">
+      <h2 id="h-color">Color buildings by</h2>
+      <div class="seg" id="scheme">
+        <button type="button" id="sc-size" data-scheme="size" aria-pressed="true">Number of homes</button>
+        <button type="button" id="sc-owner" data-scheme="owner" aria-pressed="false">Owner type</button>
+        <button type="button" id="sc-year" data-scheme="year" aria-pressed="false">Year built</button>
+      </div>
+      <ul class="legend" id="legend"></ul>
+      <p class="legend-note">Dot size also shows the number of homes.</p>
+      <div class="key-lines">
+        <label class="toggle" for="show-condos"><input type="checkbox" id="show-condos" checked><i></i>Older condo buildings, units owned separately (not counted)</label>
+        <div><svg width="26" height="16" aria-hidden="true"><circle cx="13" cy="8" r="3.5" fill="none" stroke="var(--ring)" stroke-width="1.25"/><circle cx="13" cy="8" r="7" fill="none" stroke="var(--ring)" stroke-width="1.5" stroke-dasharray="2 2.5"/></svg>¼- and ½-mile rings around each station</div>
+        <div><svg width="26" height="12" aria-hidden="true"><rect x="1" y="1" width="24" height="10" rx="2" fill="var(--district)" stroke="var(--district-line)" stroke-width="1.5" stroke-dasharray="4 2"/></svg>TOD Special District (rezoned station area)</div>
+        <div><svg width="26" height="12" aria-hidden="true"><line x1="1" y1="6" x2="25" y2="6" stroke="var(--rail)" stroke-width="3"/><circle cx="13" cy="6" r="4.5" fill="var(--panel)" stroke="var(--rail)" stroke-width="2"/></svg>Rail line and station</div>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-zoom">
+      <h2 id="h-zoom">Zoom to</h2>
+      <div class="seg" id="zoom">
+        <button type="button" id="zm-all" data-zoom="all" aria-pressed="true">Both stations</button>
+        <button type="button" id="zm-west" data-zoom="Hōʻaeʻae (West Loch)" aria-pressed="false">Hōʻaeʻae</button>
+        <button type="button" id="zm-tc" data-zoom="Pouhala (Waipahu Transit Center)" aria-pressed="false">Pouhala</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-list">
+      <h2 id="h-list">Buildings, nearest the station first</h2>
+      <div id="list"></div>
+    </section>
+
+    <section class="about" aria-labelledby="h-about">
+      <h2 id="h-about">How these were identified</h2>
+      <p>Adapted from Song &amp; Reid (2026), "The Implications of Naturally Occurring Affordable Housing (NOAH) Sales for Residential Mobility," <i>Journal of the American Planning Association</i>. A building is counted when it:</p>
+      <ul>
+        <li>has 5 to 49 homes on one parcel, with its main building built before 1990;</li>
+        <li>has one owner for the whole building;</li>
+        <li>is not government-owned, not HUD-subsidized (LIHTC, project-based Section 8, public housing) and has no large property-tax exemption;</li>
+        <li>is not used as a hotel, group quarters or military housing.</li>
+      </ul>
+      <p>The area covers both adopted TOD Special Districts (Ord. 2017-054), the 2014 Waipahu Neighborhood TOD Plan area, and anything within ½ mile of either station. The rings mark ¼ and ½ mile in a straight line from each station; the city's TOD planning areas use a ½-mile radius.</p>
+      <p>Gray dots are older condo buildings that meet every rule except single ownership. Their units are owned separately, so they are left out of the count, though some units may be rented.</p>
+      <p>These are candidates. Rents and building condition have not been checked. Owner type comes from the owner's name on the tax roll, and "Company or LLC" includes family holding companies. Owner names are not shown. Building records date from about 2013; ownership and assessed values are from the 2026 tax roll.</p>
+      <p>Sources: City &amp; County of Honolulu cadastral tables, TOD Plan and TOD Special District boundaries, and address points; State of Hawaiʻi parcel and road layers; HART rail stations and guideway; HUD subsidized housing data. Compiled November 2026.</p>
+    </section>
+  </aside>
+
+  <main class="map-wrap">
+    <div id="map" role="region" aria-label="Map of potential naturally occurring affordable housing around the Waipahu rail stations"></div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+(async function () {
+  const mapEl = document.getElementById("map");
+  let data;
+  try {
+    data = window.WAIPAHU_DATA || await fetch("waipahu_tod.json").then(r => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  } catch (err) {
+    mapEl.innerHTML = '<div class="map-msg">The map data did not load. Reload the page to try again.</div>';
+    return;
+  }
+
+  const tok = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmtTmk = t => `${t[0]}-${t[1]}-${t.slice(2, 5)}:${t.slice(5, 8)}`;
+  const money = v => v == null ? "n/a" : "$" + v.toLocaleString("en-US");
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const buildings = data.noah;
+  const condos = data.condos || [];
+  const sum = rows => rows.reduce((a, r) => a + r.units, 0);
+
+  // Summary numbers come straight from the data
+  const median = arr => { const s = [...arr].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2); };
+  document.getElementById("s-bldg").textContent = buildings.length;
+  document.getElementById("s-units").textContent = sum(buildings).toLocaleString("en-US");
+  document.getElementById("s-near").textContent = buildings.filter(r => r.stationMiles <= 0.25).length;
+  document.getElementById("s-year").textContent = median(buildings.map(r => r.year));
+  document.getElementById("also").textContent = condos.length
+    ? `Also shown in gray: ${condos.length} older condo buildings (${sum(condos)} homes) whose units are owned separately, so they are not counted.`
+    : "";
+
+  const SCHEMES = {
+    size: [
+      { label: "5–9 homes", test: r => r.units < 10, token: "--seq-2" },
+      { label: "10–19 homes", test: r => r.units >= 10 && r.units < 20, token: "--seq-3" },
+      { label: "20 or more homes", test: r => r.units >= 20, token: "--seq-4" },
+    ],
+    owner: [
+      { label: "Individual or family trust", test: r => r.owner === "Individual or family trust", token: "--cat-1" },
+      { label: "Company or LLC", test: r => r.owner === "Company or LLC", token: "--cat-2" },
+      { label: "Nonprofit or charitable", test: r => r.owner === "Nonprofit or charitable", token: "--cat-3" },
+      { label: "Unclear", test: r => r.owner === "Unclear", token: "--cat-4" },
+    ],
+    year: [
+      { label: "Before 1950", test: r => r.year < 1950, token: "--seq-4" },
+      { label: "1950s", test: r => r.year >= 1950 && r.year < 1960, token: "--seq-3" },
+      { label: "1960s", test: r => r.year >= 1960 && r.year < 1970, token: "--seq-2" },
+      { label: "1970s–80s", test: r => r.year >= 1970, token: "--seq-1" },
+    ],
+  };
+  let scheme = "size";
+  const classOf = r => SCHEMES[scheme].find(c => c.test(r));
+
+  // Map
+  const map = L.map(mapEl, { zoomSnap: 0.25, minZoom: 13, maxZoom: 19, attributionControl: false, zoomAnimation: !reduceMotion });
+  const [x0, y0, x1, y1] = data.extent;
+  map.fitBounds([[y0, x0], [y1, x1]], { animate: false }); // layers can only be styled once the map has a view
+  map.setMaxBounds([[y0 - 0.02, x0 - 0.03], [y1 + 0.02, x1 + 0.03]]);
+
+  const land = L.geoJSON(data.land, { interactive: false }).addTo(map);
+  const districts = L.geoJSON(data.districts, { interactive: false }).addTo(map);
+  const casing = L.geoJSON(data.streets, { interactive: false }).addTo(map);
+  const streets = L.geoJSON(data.streets, { interactive: false }).addTo(map);
+  const rail = L.geoJSON(data.guideway, { interactive: false }).addTo(map);
+
+  // The TOD "bullseye": 1/4- and 1/2-mile rings around each station
+  const MILE = 1609.344;
+  const RINGS = [0.25, 0.5];
+  const ringsByStation = {};
+  for (const s of data.stations.filter(s => s.tod)) {
+    ringsByStation[s.name] = RINGS.map(mi => L.circle([s.lat, s.lon], { radius: mi * MILE, interactive: false, fill: false }).addTo(map));
+    for (const mi of RINGS) {
+      L.marker([s.lat + (mi * MILE) / 111320, s.lon], {
+        interactive: false, keyboard: false,
+        icon: L.divIcon({ className: "lbl ring-label", html: `<span>${mi === 0.25 ? "¼" : "½"} mi</span>`, iconSize: [0, 0] }),
+      }).addTo(map);
+    }
+  }
+
+  const MAJOR = /HWY|FWY|\bRD\b|^WAIPAHU ST$|^PAIWA ST$|^HIKIMOE ST$|^MOKUOLA ST$|^LEOKU ST$|^WAIPAHU DEPOT ST$/;
+  const isMajor = name => MAJOR.test(name || "");
+
+  // Street labels: one per named street, at the middle of its longest segment
+  const lengthOf = path => path.reduce((a, p, i) => i ? a + Math.hypot(p[0] - path[i - 1][0], p[1] - path[i - 1][1]) : 0, 0);
+  const byName = {};
+  for (const f of data.streets.features) {
+    const raw = (f.properties.name || "").trim();
+    if (!raw || /RAMP|OFF|ONRAMP/.test(raw)) continue;
+    const name = /H1/.test(raw) ? "H-1" : raw.replace(/\w\S*/g, w => w[0] + w.slice(1).toLowerCase());
+    for (const path of f.geometry.coordinates) {
+      const len = lengthOf(path);
+      const e = byName[name] || (byName[name] = { total: 0, best: null, bestLen: 0, major: isMajor(raw) });
+      e.total += len;
+      if (len > e.bestLen) { e.best = path; e.bestLen = len; }
+    }
+  }
+  Object.entries(byName).sort((a, b) => b[1].total - a[1].total).slice(0, 28).forEach(([name, e]) => {
+    const p = e.best[Math.floor(e.best.length / 2)];
+    L.marker([p[1], p[0]], {
+      interactive: false, keyboard: false,
+      icon: L.divIcon({ className: "lbl street-label" + (e.major ? " major" : ""), html: `<span>${esc(name)}</span>`, iconSize: [0, 0] }),
+    }).addTo(map);
+  });
+
+  // Stations
+  const stationDots = data.stations.map(s => {
+    const dot = L.circleMarker([s.lat, s.lon], { radius: 7, weight: 3, interactive: false }).addTo(map);
+    L.marker([s.lat, s.lon], {
+      interactive: false, keyboard: false,
+      icon: L.divIcon({ className: "lbl station-label", html: `<span>${esc(s.name)}</span>`, iconSize: [0, 0] }),
+    }).addTo(map);
+    return dot;
+  });
+
+  // Parcels under the dots: condo buildings first, then the counted buildings on top
+  const parcelByTmk = {};
+  const keepParcel = (f, layer) => { parcelByTmk[f.properties.tmk] = layer; };
+  const condoGroup = L.layerGroup().addTo(map);
+  L.geoJSON(data.condoParcels || { type: "FeatureCollection", features: [] }, { onEachFeature: keepParcel }).addTo(condoGroup);
+  L.geoJSON(data.parcels, { onEachFeature: keepParcel }).addTo(map);
+
+  const radius = r => 4.5 + Math.sqrt(r.units) * 1.5;
+  const homes = r => `${r.units}${r.buildings > 1 ? ` in ${r.buildings} buildings` : ""}`;
+  const stationLine = r => `${esc(r.station)}, ${r.stationMiles.toFixed(2)} mi`;
+  const recordLink = r => r.link ? `<p style="margin:8px 0 0"><a href="${esc(r.link)}" target="_blank" rel="noopener">City property record ↗</a></p>` : "";
+  const popupHtml = r => `
+    <div class="pop">
+      <h4>${esc(r.address || "Address not listed")}</h4>
+      <div class="tmk">TMK ${fmtTmk(r.tmk)}</div>
+      <dl>
+        <dt>Homes</dt><dd>${homes(r)}</dd>
+        <dt>Built</dt><dd>${r.year}</dd>
+        <dt>Type</dt><dd>${esc(r.type)}</dd>
+        <dt>Owner</dt><dd>${esc(r.owner)}</dd>
+        <dt>Station</dt><dd>${stationLine(r)}</dd>
+        <dt>Assessed</dt><dd>${money(r.valuePerUnit)} per home (2026)</dd>
+      </dl>
+      ${r.district ? "" : '<div class="flag">Within ½ mile of a station, outside the TOD Special Districts</div>'}
+      ${r.multi ? '<div class="flag">Owner has 3+ of these buildings on Oʻahu</div>' : ""}
+      ${r.outOfState ? '<div class="flag">Owner mailing address is off-island</div>' : ""}
+      ${recordLink(r)}
+    </div>`;
+  const condoPopupHtml = r => `
+    <div class="pop">
+      <h4>${esc(r.address || "Address not listed")}</h4>
+      <div class="tmk">TMK ${fmtTmk(r.tmk)}</div>
+      <div class="flag">Condo with separately owned units, not counted</div>
+      <dl>
+        <dt>Homes</dt><dd>${homes(r)}</dd>
+        <dt>Built</dt><dd>${r.year}</dd>
+        <dt>Owners</dt><dd>${r.unitOwners} owners of ${r.unitRecords} condo units</dd>
+        <dt>Station</dt><dd>${stationLine(r)}</dd>
+        <dt>Assessed</dt><dd>${money(r.valuePerUnit)} per home (2026)</dd>
+      </dl>
+      ${recordLink(r)}
+    </div>`;
+
+  const dots = {};
+  const items = {};
+  function addDot(r, layer, html) {
+    const dot = L.circleMarker([r.lat, r.lon], { radius: radius(r), weight: 1.5, fillOpacity: 0.92 }).addTo(layer);
+    dot.bindPopup(html, { maxWidth: 300, autoPanPadding: [24, 24] });
+    dot.on("mouseover", () => hot(r.tmk, true));
+    dot.on("mouseout", () => hot(r.tmk, false));
+    dot.on("popupopen", () => select(r.tmk));
+    dot.on("popupclose", () => select(null));
+    if (parcelByTmk[r.tmk]) parcelByTmk[r.tmk].on("click", () => dot.openPopup());
+    dots[r.tmk] = dot;
+  }
+  for (const r of condos) addDot(r, condoGroup, condoPopupHtml(r));
+  for (const r of buildings) addDot(r, map, popupHtml(r));
+
+  function hot(tmk, on) {
+    const d = dots[tmk];
+    if (d) d.setStyle({ weight: on ? 3.5 : 1.5 });
+    if (items[tmk]) items[tmk].classList.toggle("hot", on);
+  }
+  function select(tmk) {
+    for (const [t, el] of Object.entries(items)) el.setAttribute("aria-current", t === tmk ? "true" : "false");
+    if (tmk && items[tmk]) items[tmk].scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+  }
+
+  // Sidebar list: counted buildings grouped by station area, then the condo buildings
+  const list = document.getElementById("list");
+  function addGroup(title, rows, meta) {
+    rows.sort((a, b) => a.stationMiles - b.stationMiles);
+    const sec = document.createElement("div");
+    sec.className = "group";
+    sec.innerHTML = `<h3>${esc(title)} <span>${rows.length} buildings · ${sum(rows)} homes</span></h3>`;
+    const ul = document.createElement("ul");
+    ul.className = "items";
+    for (const r of rows) {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "item";
+      b.id = "b-" + r.tmk;
+      b.innerHTML = `<span class="addr">${esc(r.address || "TMK " + fmtTmk(r.tmk))}</span>
+        <span class="meta">${esc(meta(r))}</span>
+        <span class="dist">${r.stationMiles.toFixed(2)} mi</span>`;
+      b.addEventListener("click", () => {
+        const d = dots[r.tmk];
+        const go = () => d.openPopup();
+        if (reduceMotion) { map.setView(d.getLatLng(), Math.max(map.getZoom(), 17)); go(); }
+        else { map.once("moveend", go); map.flyTo(d.getLatLng(), Math.max(map.getZoom(), 17), { duration: 0.6 }); }
+      });
+      b.addEventListener("mouseenter", () => hot(r.tmk, true));
+      b.addEventListener("mouseleave", () => hot(r.tmk, false));
+      items[r.tmk] = b;
+      li.appendChild(b);
+      ul.appendChild(li);
+    }
+    sec.appendChild(ul);
+    list.appendChild(sec);
+    return sec;
+  }
+  const groups = {};
+  for (const r of buildings) {
+    const title = r.district ? r.district.replace(" Station Area", " station area") : "Within ½ mile, outside the special districts";
+    (groups[title] ||= []).push(r);
+  }
+  const noahMeta = r => `${r.units} homes · built ${r.year} · ${r.owner}`;
+  for (const [title, rows] of Object.entries(groups).sort((a, b) => b[1].length - a[1].length)) addGroup(title, rows, noahMeta);
+  const condoSection = condos.length
+    ? addGroup("Older condo buildings (not counted)", [...condos], r => `${r.units} homes · built ${r.year} · ${r.unitOwners} unit owners`)
+    : null;
+
+  // Styling, re-run whenever the theme or color scheme changes
+  function restyle() {
+    const ring = tok("--marker-ring");
+    land.setStyle({ fillColor: tok("--land"), fillOpacity: 1, color: tok("--land"), weight: 0 });
+    districts.setStyle({ fillColor: tok("--district-line"), fillOpacity: 0.09, color: tok("--district-line"), weight: 1.5, dashArray: "6 4" });
+    casing.setStyle(f => ({ color: tok("--street-casing"), weight: isMajor(f.properties.name) ? 6 : 3, opacity: 1 }));
+    streets.setStyle(f => ({ color: tok("--street"), weight: isMajor(f.properties.name) ? 4 : 1.6, opacity: 1 }));
+    rail.setStyle({ color: tok("--rail"), weight: 4, opacity: 0.9 });
+    for (const rings of Object.values(ringsByStation)) {
+      rings[0].setStyle({ color: tok("--ring"), weight: 1.25, opacity: 0.85, fill: false });
+      rings[1].setStyle({ color: tok("--ring"), weight: 1.5, opacity: 0.85, dashArray: "2 6", fill: false });
+    }
+    for (const d of stationDots) d.setStyle({ color: tok("--rail"), fillColor: tok("--panel"), fillOpacity: 1 });
+    const legend = document.getElementById("legend");
+    legend.innerHTML = "";
+    for (const c of SCHEMES[scheme]) {
+      const n = buildings.filter(c.test).length;
+      if (!n) continue;
+      const li = document.createElement("li");
+      li.innerHTML = `<i style="background:${tok(c.token)}"></i>${esc(c.label)}<span class="n">${n}</span>`;
+      legend.appendChild(li);
+    }
+    const paint = (r, color, fillOpacity) => {
+      dots[r.tmk].setStyle({ fillColor: color, color: ring });
+      const p = parcelByTmk[r.tmk];
+      if (p) p.setStyle({ fillColor: color, fillOpacity, color, weight: 1, opacity: 0.8 });
+      items[r.tmk].style.setProperty("--dot", color);
+    };
+    for (const r of buildings) paint(r, tok(classOf(r).token), 0.3);
+    for (const r of condos) paint(r, tok("--condo"), 0.2);
+  }
+  restyle();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", restyle);
+  new MutationObserver(restyle).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  document.getElementById("scheme").addEventListener("click", e => {
+    const b = e.target.closest("button[data-scheme]");
+    if (!b) return;
+    scheme = b.dataset.scheme;
+    for (const x of document.querySelectorAll("#scheme button")) x.setAttribute("aria-pressed", String(x === b));
+    restyle();
+  });
+
+  document.getElementById("show-condos").addEventListener("change", e => {
+    if (e.target.checked) condoGroup.addTo(map);
+    else { map.closePopup(); condoGroup.remove(); }
+    if (condoSection) condoSection.hidden = !e.target.checked;
+  });
+
+  // Zoom presets: both bullseyes, or one station's 1/2-mile ring
+  const allBounds = () => {
+    const b = districts.getBounds();
+    for (const rings of Object.values(ringsByStation)) b.extend(rings[1].getBounds());
+    return b;
+  };
+  const fitAll = () => map.fitBounds(allBounds(), { padding: [20, 20], animate: !reduceMotion });
+  document.getElementById("zoom").addEventListener("click", e => {
+    const b = e.target.closest("button[data-zoom]");
+    if (!b) return;
+    for (const x of document.querySelectorAll("#zoom button")) x.setAttribute("aria-pressed", String(x === b));
+    if (b.dataset.zoom === "all") return fitAll();
+    const rings = ringsByStation[b.dataset.zoom];
+    if (rings) map.fitBounds(rings[1].getBounds(), { padding: [20, 20], animate: !reduceMotion });
+  });
+
+  const zoomClass = () => {
+    const z = map.getZoom();
+    mapEl.classList.toggle("z15", z >= 15);
+    mapEl.classList.toggle("z16", z >= 16.25);
+  };
+  map.on("zoomend", zoomClass);
+  fitAll();
+  zoomClass();
+  new ResizeObserver(() => map.invalidateSize()).observe(mapEl);
+})();
+</script>
+</body>
+</html>
